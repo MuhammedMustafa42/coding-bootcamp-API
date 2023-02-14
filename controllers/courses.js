@@ -1,5 +1,6 @@
 const ErrorResponse = require("../utils/errorResponse");
 const Course = require("../models/Course");
+const Bootcamp = require("../models/Bootcamp");
 
 //@description      Get courses
 //@route            GET /api/v1/courses
@@ -12,7 +13,10 @@ exports.getCourses = async (req, res, next) => {
     if (req.params.bootcampId) {
       query = Course.find({ bootcamp: req.params.bootcampId });
     } else {
-      query = Course.find();
+      query = Course.find().populate({
+        path: "bootcamp",
+        select: "name description",
+      });
     }
 
     const courses = await query;
@@ -21,6 +25,61 @@ exports.getCourses = async (req, res, next) => {
       success: true,
       count: courses.length,
       data: courses,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//@description      Get single course
+//@route            GET /api/v1/courses/:id
+//@access           Public
+exports.getCourse = async (req, res, next) => {
+  try {
+    const course = await Course.findById(req.params.id).populate({
+      path: "bootcamp",
+      select: "name description",
+    });
+
+    if (!course) {
+      return next(
+        new ErrorResponse(`No course with the id of ${req.params.id}`),
+        404
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      data: course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//@description      Add course
+//@route            POST /api/v1/bootcamps/:bootcampId/courses
+//@access           Public
+exports.addCourse = async (req, res, next) => {
+  try {
+    req.body.bootcamp = req.params.bootcampId;
+
+    const bootcamp = await Bootcamp.findById(req.params.bootcampId);
+
+    if (!bootcamp) {
+      return next(
+        new ErrorResponse(
+          `No Bootcamp with the id of ${req.params.bootcampId}`
+        ),
+        404
+      );
+    }
+
+    const course = await Course.create(req.body);
+
+    res.status(200).json({
+      success: true,
+      data: course,
     });
   } catch (error) {
     next(error);
